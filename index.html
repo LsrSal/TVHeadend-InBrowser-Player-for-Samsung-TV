@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TVHeadend Samsung TV Guide</title>
+<style type="text/css">
+html, body { margin:0; padding:0; width:100%; height:100%; background:#090d14; color:#f3f6fb; font-family:Arial,Helvetica,sans-serif; }
+body { font-size:18px; overflow:hidden; }
+* { box-sizing:border-box; }
+button, input { font-family:Arial,Helvetica,sans-serif; font-size:18px; }
+button { color:#f3f6fb; background:#182335; border:2px solid #26354a; padding:8px 14px; cursor:pointer; }
+button:focus, input:focus { outline:3px solid #ffffff; }
+.app { height:100%; padding:14px 18px; position:relative; }
+.layout { height:100%; overflow:hidden; }
+.guide-panel { float:left; width:62%; height:100%; background:#121a27; border:1px solid #26354a; overflow:hidden; position:relative; }
+.player-panel { float:right; width:37%; height:100%; background:#121a27; border:1px solid #26354a; overflow:auto; display:flex; flex-direction:column; position:relative; }
+.subtle { color:#9aabc1; font-size:15px; }
+
+#guide { height:100%; overflow:hidden; position:relative; }
+
+.guide-top-bar { height:36px; position:absolute; top:0; left:0; right:0; background:#182335; border-bottom:1px solid #26354a; z-index:5; display:block; }
+.guide-corner { position:absolute; left:0; top:0; width:220px; height:36px; border-right:1px solid #26354a; padding:8px 10px; font-size:13px; font-weight:bold; color:#9aabc1; background:#182335; }
+.timeline-header-wrap { position:absolute; left:220px; right:0; top:0; height:36px; overflow:hidden; background:#182335; }
+.timeline-header { height:36px; position:relative; }
+.time-tick { position:absolute; top:0; bottom:0; border-left:1px solid #26354a; padding-left:6px; padding-top:8px; font-size:13px; color:#9aabc1; white-space:nowrap; }
+.time-tick.now-tick { border-color:#65d6c4; color:#65d6c4; font-weight:bold; }
+
+.guide-body-container { position:absolute; top:36px; bottom:0; left:0; right:0; overflow:hidden; background:#0f1722; }
+#channelSidebar { position:absolute; left:0; top:0; bottom:0; width:220px; overflow:hidden; background:#121a27; border-right:1px solid #26354a; z-index:4; }
+#channelSidebarContent { position:absolute; left:0; top:0; width:100%; }
+
+.channel-cell { position:absolute; left:0; right:0; height:82px; text-align:left; border:0; border-bottom:1px solid #26354a; background:#121a27; padding:8px 10px; overflow:hidden; cursor:pointer; display:flex; align-items:center; }
+.channel-cell.selected, .channel-cell.focus { background:#203447; border-left:5px solid #65d6c4; }
+.channel-icon { width:64px; height:64px; min-width:64px; min-height:64px; max-width:64px; max-height:64px; object-fit:contain; margin-right:10px; flex-shrink:0; display:block; background:transparent; }
+.channel-info { overflow:hidden; flex-grow:1; }
+.channel-number { display:block; color:#9aabc1; font-size:13px; line-height:1.1; }
+.channel-name { display:block; font-weight:bold; margin-top:3px; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+#guideGridContainer { position:absolute; left:220px; right:0; top:0; bottom:0; overflow:auto; background:#0f1722; }
+#guideGridContainer::-webkit-scrollbar { display:none; width:0; height:0; }
+#guideContent { position:relative; }
+
+.programmes-row { position:absolute; left:0; right:0; height:82px; border-bottom:1px solid #26354a; }
+.programme-block { position:absolute; top:6px; height:70px; background:#182335; border:1px solid #26354a; border-radius:3px; padding:6px 8px; cursor:pointer; overflow:hidden; text-align:left; transition:background 0.15s; }
+.programme-block:hover { background:#203447; border-color:#65d6c4; }
+.programme-block.current { border-left:4px solid #65d6c4; background:#1b2b3d; }
+.prog-time { color:#65d6c4; font-size:13px; margin-bottom:2px; }
+.prog-title { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:bold; font-size:14px; }
+.now-line { position:absolute; top:0; bottom:0; width:2px; background:#65d6c4; z-index:5; pointer-events:none; }
+
+.video-wrap { width:100%; background:#000; text-align:center; position:relative; overflow:hidden; aspect-ratio: 16 / 9; flex-shrink:0; }
+.video-ratio { position:relative; width:100%; height:0; padding-top:56.25%; background:#000; overflow:hidden; aspect-ratio: 16 / 9; }
+
+#video { position:absolute; left:0; top:0; display:block; width:100%; height:100%; max-height:none; background:#000; object-fit: fill; aspect-ratio: 16 / 9; cursor: pointer; }
+
+#videoMessage { position:absolute; z-index:2; left:0; right:0; top:0; bottom:0; padding:20px 10px; color:#aab9cb; text-align:center; background:#080b10; pointer-events: none; }
+.now-playing { padding:12px; border-bottom:1px solid #26354a; flex-grow:1; overflow-y:auto; }
+.current-line { display:flex; align-items:baseline; flex-wrap:wrap; gap:6px; margin-bottom:4px; }
+#selectedChannel { font-size:15px; color:#9aabc1; }
+#programmeTitle { font-size:20px; font-weight:bold; color:#f3f6fb; }
+#programmeDetails { color:#9aabc1; font-size:15px; line-height:1.4; margin-bottom:10px; }
+
+.next-line { display:flex; align-items:baseline; flex-wrap:wrap; gap:6px; margin-bottom:4px; }
+#nextProgrammePrefix { font-size:15px; color:#9aabc1; font-weight:bold; }
+#nextProgrammeTitle { font-size:18px; font-weight:bold; color:#f3f6fb; }
+#nextProgrammeDetails { color:#9aabc1; font-size:15px; line-height:1.4; margin-bottom:10px; }
+
+.section-divider { border:0; height:1px; background:#26354a; margin:12px 0; display:none; }
+
+.hover-line { display:flex; align-items:baseline; flex-wrap:wrap; gap:6px; margin-bottom:4px; }
+#hoverProgrammePrefix { font-size:15px; color:#65d6c4; font-weight:bold; }
+#hoverProgrammeTitle { font-size:18px; font-weight:bold; color:#f3f6fb; }
+#hoverProgrammeDetails { color:#9aabc1; font-size:15px; line-height:1.4; }
+
+.status { padding:10px 12px; background:#121a27; border-top:1px solid #26354a; color:#9aabc1; font-size:14px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; }
+.status-left { display:flex; align-items:center; overflow:hidden; }
+.status-right { display:flex; align-items:center; flex-shrink:0; margin-left:10px; }
+.dot { display:inline-block; width:9px; height:9px; background:#e8b65a; margin-right:8px; flex-shrink:0; }
+.dot.ok { background:#65d6c4; } .dot.err { background:#f07878; }
+#clock { color:#9aabc1; font-size:15px; margin-left:12px; }
+#settingsButton { margin-left:12px; padding:4px 10px; font-size:14px; }
+
+#settings { display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:#000000; z-index:100; padding:25px; }
+.dialog { max-width:650px; margin:20px auto; background:#121a27; border:2px solid #26354a; padding:20px; }
+.dialog h2 { margin-top:0; }
+.dialog p { color:#9aabc1; font-size:16px; line-height:1.4; }
+.field { margin:12px 0; }
+.field label { display:block; color:#9aabc1; margin-bottom:5px; font-size:15px; }
+.field input { width:100%; padding:10px; color:#fff; background:#080d14; border:1px solid #26354a; }
+.dialog-actions { text-align:right; margin-top:16px; }
+#error { color:#ffadad; white-space:pre-wrap; font-size:14px; }
+@media screen and (max-width:800px) {
+ body { font-size:15px; }
+ .app { padding:6px; }
+ .guide-panel { width:57%; }
+ .player-panel { width:42%; }
+ button, input { font-size:15px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="layout">
+    <div class="guide-panel" id="guidePanel">
+      <div id="guide"><div class="subtle" style="padding:20px">Loading TVHeadend channels...</div></div>
+    </div>
+    <div class="player-panel">
+      <div class="video-wrap">
+        <div class="video-ratio">
+          <video id="video" width="480" height="270" preload="none"></video>
+          <div id="videoMessage">Select a channel to start playback.</div>
+        </div>
+      </div>
+      <div class="now-playing">
+        <div class="current-line">
+          <span id="selectedChannel">NO CHANNEL SELECTED</span><span id="channelColon">:</span><span id="programmeTitle">Choose a channel</span>
+        </div>
+        <div id="programmeDetails">Current and upcoming programmes will appear here.</div>
+        <div class="next-line">
+          <span id="nextProgrammePrefix">Next:</span><span id="nextProgrammeTitle"></span>
+        </div>
+        <div id="nextProgrammeDetails"></div>
+        <hr id="sectionDivider" class="section-divider">
+        <div class="hover-line">
+          <span id="hoverProgrammePrefix" style="display:none;"></span><span id="hoverProgrammeTitle"></span>
+        </div>
+        <div id="hoverProgrammeDetails"></div>
+      </div>
+      <div class="status">
+        <div class="status-left">
+          <span id="statusDot" class="dot"></span><span id="statusText">Connecting...</span>
+        </div>
+        <div class="status-right">
+          <button id="settingsButton" type="button">Settings</button>
+          <div id="clock"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="settings">
+  <div class="dialog">
+    <h2>TVHeadend connection</h2>
+    <p>This page should be opened from the TVHeadend server at port 9981. API requests use the same host and port as this page.</p>
+    <div class="field"><label for="username">Username</label><input id="username" value="user" /></div>
+    <div class="field"><label for="password">Password</label><input id="password" type="password" value="password" /></div>
+    <div class="field"><label for="streamTemplate">Stream URL template</label><input id="streamTemplate" value="/stream/channel/{uuid}" /></div>
+    <p>Credentials are stored in this browser only. They must also exist as a TVHeadend account with channel and EPG permissions.</p>
+    <div id="error"></div>
+    <div class="dialog-actions"><button id="cancelSettings" type="button">Cancel</button> <button id="saveSettings" class="primary" type="button">Save and connect</button></div>
+  </div>
+</div>
+<script type="text/javascript">
+(function () {
+  var el = function (id) { return document.getElementById(id); };
+  var defaults = { username: 'user', password: 'password', template: '/stream/channel/{uuid}' };
+  var config = defaults;
+  var channels = [];
+  var events = [];
+  var selectedIndex = -1;
+  var selectedChannel = null;
+  var guideFocus = 0;
+  var loading = false;
+  var video = el('video');
+  var hoverTimer = null;
+
+  var pxPerMinute = 4;
+  var timelineStart = 0;
+  var timelineEnd = 0;
+  var totalWidth = 0;
+  var rowHeight = 82;
+  var guideInitialized = false;
+
+  var vScrollState = { active: false, direction: 0, speed: 0, maxDist: 0 };
+  var hScrollState = { active: false, direction: 0, speed: 0, maxDist: 0 };
+
+  // Manual full-screen trigger via click / user gesture
+  video.onclick = function () {
+    try {
+      if (video.webkitRequestFullscreen) {
+        video.webkitRequestFullscreen();
+      } else if (video.requestFullscreen) {
+        video.requestFullscreen();
+      }
+    } catch (e) {}
+  };
+
+  function loadConfig() {
+    try {
+      var saved = JSON.parse(window.localStorage.getItem('tvhGuideConfig') || '{}');
+      config = { username: saved.username || defaults.username, password: saved.password || defaults.password, template: saved.template || defaults.template };
+    } catch (e) { config = defaults; }
+    el('username').value = config.username;
+    el('password').value = config.password;
+    el('streamTemplate').value = config.template;
+  }
+  function setStatus(text, kind) {
+    el('statusText').innerHTML = '';
+    el('statusText').appendChild(document.createTextNode(text));
+    el('statusDot').className = 'dot' + (kind ? ' ' + kind : '');
+  }
+  function api(path, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/' + path, true);
+    xhr.setRequestHeader('Authorization', 'Basic ' + window.btoa(config.username + ':' + config.password));
+    xhr.setRequestHeader('Cache-Control', 'no-cache');
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { callback(null, JSON.parse(xhr.responseText)); }
+        catch (e) { callback(new Error('TVHeadend returned invalid JSON')); }
+      } else {
+        callback(new Error('TVHeadend API HTTP ' + xhr.status + ' for ' + path));
+      }
+    };
+    xhr.onerror = function () { callback(new Error('Network error connecting to TVHeadend')); };
+    xhr.send(null);
+  }
+
+  function apiText(path, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/' + path, true);
+    xhr.setRequestHeader('Authorization', 'Basic ' + window.btoa(config.username + ':' + config.password));
+    xhr.setRequestHeader('Cache-Control', 'no-cache');
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        callback(null, xhr.responseText);
+      } else {
+        callback(new Error('HTTP ' + xhr.status + ' for ' + path));
+      }
+    };
+    xhr.onerror = function () { callback(new Error('Network error')); };
+    xhr.send(null);
+  }
+
+  function parseM3U(text) {
+    var lines = text.split('\n');
+    var map = {};
+    var currentLogo = '';
+    
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (line.indexOf('#EXTINF:') === 0) {
+        currentLogo = '';
+        var logoMatch = line.match(/logo="([^"]+)"/);
+        if (logoMatch && logoMatch[1]) {
+          currentLogo = logoMatch[1];
+        }
+        var tvgIdMatch = line.match(/tvg-id="([^"]+)"/);
+        var tvgNameMatch = line.match(/tvg-name="([^"]+)"/);
+        var parts = line.split(',');
+        var chName = parts.length > 1 ? parts[parts.length - 1].trim() : '';
+
+        if (currentLogo) {
+          if (currentLogo.indexOf('/imagecache/') >= 0) {
+            currentLogo = '/imagecache/' + currentLogo.split('/imagecache/')[1];
+          }
+          if (tvgIdMatch) map['id_' + tvgIdMatch[1]] = currentLogo;
+          if (tvgNameMatch) map['name_' + tvgNameMatch[1].toLowerCase()] = currentLogo;
+          if (chName) map['name_' + chName.toLowerCase()] = currentLogo;
+        }
+      }
+    }
+    return map;
+  }
+
+  function entries(data) { return data && data.entries && data.entries.length ? data.entries : []; }
+  function startMs(e) { return Number(e.start || e.start_time || 0) * 1000; }
+  function stopMs(e) { return Number(e.stop || e.stop_time || 0) * 1000; }
+  function channelId(e) { return e.channelUuid || e.channel_uuid || e.channel || ''; }
+  
+  function getEventsForChannel(ch) {
+    var list = [], i, e;
+    for (i = 0; i < events.length; i++) {
+      e = events[i];
+      if (String(channelId(e)) === String(ch.uuid) || e.channelName === ch.name) {
+        list.push(e);
+      }
+    }
+    list.sort(function (a, b) { return startMs(a) - startMs(b); });
+    return list;
+  }
+
+  function pairFor(ch) {
+    var now = new Date().getTime(), list = getEventsForChannel(ch), i, e;
+    var current = null, next = null;
+    for (i = 0; i < list.length; i++) {
+      e = list[i];
+      if (!current && startMs(e) <= now && stopMs(e) > now) current = e;
+      if (!next && startMs(e) > now) next = e;
+    }
+    return { current: current, next: next };
+  }
+
+  function fmt(ms) {
+    if (!ms) return 'Time unavailable';
+    var d = new Date(ms), h = d.getHours(), m = d.getMinutes();
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  }
+
+  function addText(parent, tag, className, text) {
+    var n = document.createElement(tag);
+    n.className = className || '';
+    n.appendChild(document.createTextNode(text || ''));
+    parent.appendChild(n);
+    return n;
+  }
+
+  var headerDiv = null;
+  var channelSidebarContent = null;
+  var gridContent = null;
+  var gridContainer = null;
+  var nowOffset = 0;
+
+  function initGuideSkeleton() {
+    var guide = el('guide');
+    var existingGrid = el('guideGridContainer');
+    var savedScrollTop = existingGrid ? existingGrid.scrollTop : 0;
+    var savedScrollLeft = existingGrid ? existingGrid.scrollLeft : 0;
+
+    while (guide.firstChild) guide.removeChild(guide.firstChild);
+
+    if (!channels.length) {
+      addText(guide, 'div', 'subtle', 'No channels returned. Check credentials and TVHeadend permissions.');
+      return;
+    }
+
+    var now = new Date().getTime();
+    timelineStart = now - 30 * 60 * 1000;
+    timelineEnd = now + 6 * 3600 * 1000;
+
+    var totalMinutes = Math.ceil((timelineEnd - timelineStart) / 60000);
+    totalWidth = Math.max(1200, totalMinutes * pxPerMinute);
+
+    var topBar = document.createElement('div');
+    topBar.className = 'guide-top-bar';
+
+    var corner = document.createElement('div');
+    corner.className = 'guide-corner';
+    corner.appendChild(document.createTextNode('CHANNELS'));
+    topBar.appendChild(corner);
+
+    var headerWrap = document.createElement('div');
+    headerWrap.className = 'timeline-header-wrap';
+    headerDiv = document.createElement('div');
+    headerDiv.className = 'timeline-header';
+    headerDiv.style.width = totalWidth + 'px';
+
+    var tickInterval = 30 * 60 * 1000;
+    var firstTick = Math.ceil(timelineStart / tickInterval) * tickInterval;
+    for (var tTime = firstTick; tTime <= timelineEnd; tTime += tickInterval) {
+      var offsetPx = (tTime - timelineStart) / 60000 * pxPerMinute;
+      var tick = document.createElement('div');
+      tick.className = 'time-tick';
+      tick.style.left = offsetPx + 'px';
+      tick.appendChild(document.createTextNode(fmt(tTime)));
+      headerDiv.appendChild(tick);
+    }
+
+    nowOffset = (now - timelineStart) / 60000 * pxPerMinute;
+    var nowTick = document.createElement('div');
+    nowTick.className = 'time-tick now-tick';
+    nowTick.style.left = nowOffset + 'px';
+    nowTick.appendChild(document.createTextNode('NOW'));
+    headerDiv.appendChild(nowTick);
+
+    headerWrap.appendChild(headerDiv);
+    topBar.appendChild(headerWrap);
+    guide.appendChild(topBar);
+
+    var bodyContainer = document.createElement('div');
+    bodyContainer.className = 'guide-body-container';
+
+    var channelSidebar = document.createElement('div');
+    channelSidebar.id = 'channelSidebar';
+    channelSidebarContent = document.createElement('div');
+    channelSidebarContent.id = 'channelSidebarContent';
+    channelSidebarContent.style.height = (channels.length * rowHeight) + 'px';
+    channelSidebar.appendChild(channelSidebarContent);
+    bodyContainer.appendChild(channelSidebar);
+
+    gridContainer = document.createElement('div');
+    gridContainer.id = 'guideGridContainer';
+
+    gridContent = document.createElement('div');
+    gridContent.id = 'guideContent';
+    gridContent.style.width = totalWidth + 'px';
+    gridContent.style.height = (channels.length * rowHeight) + 'px';
+
+    var gridNowLine = document.createElement('div');
+    gridNowLine.className = 'now-line';
+    gridNowLine.style.left = nowOffset + 'px';
+    gridContent.appendChild(gridNowLine);
+
+    gridContainer.appendChild(gridContent);
+    bodyContainer.appendChild(gridContainer);
+    guide.appendChild(bodyContainer);
+
+    gridContainer.onscroll = function () {
+      headerDiv.style.transform = 'translateX(-' + gridContainer.scrollLeft + 'px)';
+      channelSidebar.scrollTop = gridContainer.scrollTop;
+      updateVisibleRows();
+    };
+
+    window.setTimeout(function () {
+      if (gridContainer) {
+        if (guideInitialized) {
+          gridContainer.scrollTop = savedScrollTop;
+          gridContainer.scrollLeft = savedScrollLeft;
+          if (channelSidebar) channelSidebar.scrollTop = savedScrollTop;
+          if (headerDiv) headerDiv.style.transform = 'translateX(-' + savedScrollLeft + 'px)';
+        } else {
+          var centerPos = nowOffset - 50;
+          gridContainer.scrollLeft = Math.max(0, centerPos);
+          guideInitialized = true;
+        }
+      }
+      updateVisibleRows();
+    }, 50);
+  }
+
+  var renderedRows = {};
+
+  function updateVisibleRows() {
+    if (!gridContainer || !channels.length) return;
+    var scrollTop = gridContainer.scrollTop;
+    var containerHeight = gridContainer.clientHeight || 500;
+
+    var startIdx = Math.floor(scrollTop / rowHeight) - 4;
+    var endIdx = Math.ceil((scrollTop + containerHeight) / rowHeight) + 4;
+
+    startIdx = Math.max(0, startIdx);
+    endIdx = Math.min(channels.length - 1, endIdx);
+
+    var newRendered = {};
+    for (var i = startIdx; i <= endIdx; i++) {
+      newRendered[i] = true;
+      if (!renderedRows[i]) {
+        renderRow(i);
+      }
+    }
+
+    for (var idxStr in renderedRows) {
+      var idx = Number(idxStr);
+      if (idx < startIdx || idx > endIdx) {
+        removeRow(idx);
+      }
+    }
+    renderedRows = newRendered;
+  }
+
+  function renderRow(i) {
+    var ch = channels[i];
+    var rowTop = i * rowHeight;
+    var now = new Date().getTime();
+
+    var cb = document.createElement('button');
+    cb.type = 'button';
+    cb.className = 'channel-cell' + (selectedChannel && selectedChannel.uuid === ch.uuid ? ' selected' : '') + (i === guideFocus ? ' focus' : '');
+    cb.style.top = rowTop + 'px';
+    cb.setAttribute('data-index', i);
+    cb.setAttribute('id', 'sidebar-row-' + i);
+
+    if (ch.icon) {
+      var img = document.createElement('img');
+      img.className = 'channel-icon';
+      img.src = ch.icon;
+      img.onerror = function() { this.style.display = 'none'; };
+      cb.appendChild(img);
+    }
+
+    var infoDiv = document.createElement('div');
+    infoDiv.className = 'channel-info';
+    addText(infoDiv, 'span', 'channel-number', ch.number !== undefined && ch.number !== null ? String(ch.number) : String(i + 1));
+    addText(infoDiv, 'span', 'channel-name', ch.name || 'Unnamed channel');
+    cb.appendChild(infoDiv);
+
+    cb.onclick = (function (idx) { return function () { tune(idx); }; }(i));
+    cb.onfocus = (function (idx) { return function () { guideFocus = idx; updateFocusClass(); }; }(i));
+    channelSidebarContent.appendChild(cb);
+
+    var rowDiv = document.createElement('div');
+    rowDiv.className = 'programmes-row';
+    rowDiv.style.top = rowTop + 'px';
+    rowDiv.style.width = totalWidth + 'px';
+    rowDiv.setAttribute('id', 'grid-row-' + i);
+
+    var chEvents = getEventsForChannel(ch);
+    if (chEvents.length === 0) {
+      var noProg = document.createElement('div');
+      noProg.className = 'subtle';
+      noProg.style.padding = '20px';
+      noProg.appendChild(document.createTextNode('No programme data'));
+      rowDiv.appendChild(noProg);
+    } else {
+      for (var j = 0; j < chEvents.length; j++) {
+        var ev = chEvents[j];
+        var eStart = startMs(ev);
+        var eStop = stopMs(ev);
+        if (eStop <= timelineStart || eStart >= timelineEnd) continue;
+
+        var leftP = Math.max(0, (eStart - timelineStart) / 60000 * pxPerMinute);
+        var rightP = Math.min(totalWidth, (eStop - timelineStart) / 60000 * pxPerMinute);
+        var widthP = Math.max(20, rightP - leftP);
+
+        var pBlock = document.createElement('button');
+        pBlock.type = 'button';
+        pBlock.className = 'programme-block' + (eStart <= now && eStop > now ? ' current' : '');
+        pBlock.style.left = leftP + 'px';
+        pBlock.style.width = widthP + 'px';
+        pBlock.style.height = (rowHeight - 12) + 'px';
+
+        addText(pBlock, 'div', 'prog-time', fmt(eStart) + ' - ' + fmt(eStop));
+        addText(pBlock, 'div', 'prog-title', ev.title || 'Programme unavailable');
+
+        pBlock.onmouseenter = (function (chObj, evObj) {
+          return function () {
+            if (hoverTimer) clearTimeout(hoverTimer);
+            hoverTimer = window.setTimeout(function () {
+              updateHoverProgrammeDetails(chObj, evObj);
+            }, 1000);
+          };
+        }(ch, ev));
+
+        pBlock.onmouseleave = function () {
+          if (hoverTimer) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
+          }
+        };
+
+        pBlock.onclick = (function (chObj, evObj, idx) {
+          return function (e) {
+            if (e && e.stopPropagation) e.stopPropagation();
+            if (hoverTimer) clearTimeout(hoverTimer);
+            selectedIndex = idx;
+            selectedChannel = chObj;
+            updateDetailsForProgramme(chObj, evObj);
+            tune(idx);
+          };
+        }(ch, ev, i));
+
+        rowDiv.appendChild(pBlock);
+      }
+    }
+    gridContent.appendChild(rowDiv);
+  }
+
+  function removeRow(i) {
+    var sbCell = el('sidebar-row-' + i);
+    if (sbCell && sbCell.parentNode) sbCell.parentNode.removeChild(sbCell);
+    var gRow = el('grid-row-' + i);
+    if (gRow && gRow.parentNode) gRow.parentNode.removeChild(gRow);
+  }
+
+  // Guide panel mouse movement scrolling logic
+  var guidePanel = el('guidePanel');
+  guidePanel.onmousemove = function (e) {
+    e = e || window.event;
+    var rect = guidePanel.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+
+    var w = rect.width;
+    var h = rect.height;
+    var cX = w / 2;
+    var cY = h / 2;
+
+    var deadZoneW = w * 0.20;
+    var deadZoneH = h * 0.20;
+
+    var dy = y - cY;
+    var absDy = Math.abs(dy);
+    var halfH = h / 2;
+
+    if (absDy <= deadZoneH) {
+      vScrollState.active = false;
+      vScrollState.speed = 0;
+      vScrollState.maxDist = 0;
+    } else {
+      var dirV = dy > 0 ? 1 : -1;
+      var outerDistV = absDy - deadZoneH;
+      var maxOuterV = halfH - deadZoneH;
+
+      if (!vScrollState.active || vScrollState.direction !== dirV) {
+        vScrollState.active = true;
+        vScrollState.direction = dirV;
+        vScrollState.maxDist = absDy;
+      } else if (absDy < vScrollState.maxDist) {
+        vScrollState.active = false;
+        vScrollState.speed = 0;
+      } else {
+        vScrollState.maxDist = absDy;
+        var ratioV = Math.min(1, outerDistV / maxOuterV);
+        vScrollState.speed = 0.5 + ratioV * 12;
+      }
+    }
+
+    var dx = x - cX;
+    var absDx = Math.abs(dx);
+    var halfW = w / 2;
+
+    if (absDx <= deadZoneW) {
+      hScrollState.active = false;
+      hScrollState.speed = 0;
+      hScrollState.maxDist = 0;
+    } else {
+      var dirH = dx > 0 ? 1 : -1;
+      var outerDistH = absDx - deadZoneW;
+      var maxOuterH = halfW - deadZoneW;
+
+      if (!hScrollState.active || hScrollState.direction !== dirH) {
+        hScrollState.active = true;
+        hScrollState.direction = dirH;
+        hScrollState.maxDist = absDx;
+      } else if (absDx < hScrollState.maxDist) {
+        hScrollState.active = false;
+        hScrollState.speed = 0;
+      } else {
+        hScrollState.maxDist = absDx;
+        var ratioH = Math.min(1, outerDistH / maxOuterH);
+        hScrollState.speed = 1 + ratioH * 16;
+      }
+    }
+  };
+
+  guidePanel.onmouseleave = function () {
+    vScrollState.active = false;
+    hScrollState.active = false;
+  };
+
+  function scrollTick() {
+    var channelSidebar = el('channelSidebar');
+    if (gridContainer && channelSidebar) {
+      if (vScrollState.active && vScrollState.speed > 0) {
+        gridContainer.scrollTop += vScrollState.direction * vScrollState.speed;
+        channelSidebar.scrollTop = gridContainer.scrollTop;
+        if (headerDiv) headerDiv.style.transform = 'translateX(-' + gridContainer.scrollLeft + 'px)';
+        updateVisibleRows();
+      }
+      if (hScrollState.active && hScrollState.speed > 0) {
+        gridContainer.scrollLeft += hScrollState.direction * hScrollState.speed;
+        if (headerDiv) headerDiv.style.transform = 'translateX(-' + gridContainer.scrollLeft + 'px)';
+      }
+    }
+    requestAnimationFrame(scrollTick);
+  }
+  requestAnimationFrame(scrollTick);
+
+  function updateFocusClass() {
+    var buttons = el('guide').getElementsByClassName('channel-cell');
+    for (var i = 0; i < buttons.length; i++) {
+      var idx = Number(buttons[i].getAttribute('data-index'));
+      if (idx === guideFocus) {
+        if (buttons[i].className.indexOf('focus') < 0) buttons[i].className += ' focus';
+      } else {
+        buttons[i].className = buttons[i].className.replace(' focus', '');
+      }
+    }
+  }
+
+  function focusChannel(index) {
+    if (index < 0) index = 0;
+    if (index >= channels.length) index = channels.length - 1;
+    guideFocus = index;
+    updateFocusClass();
+    var channelSidebar = el('channelSidebar');
+    if (gridContainer && channelSidebar) {
+      var targetTop = guideFocus * rowHeight;
+      if (targetTop < gridContainer.scrollTop || targetTop > gridContainer.scrollTop + gridContainer.clientHeight - rowHeight) {
+        gridContainer.scrollTop = targetTop;
+        channelSidebar.scrollTop = gridContainer.scrollTop;
+        if (headerDiv) headerDiv.style.transform = 'translateX(-' + gridContainer.scrollLeft + 'px)';
+        updateVisibleRows();
+      }
+    }
+  }
+
+  function updateHoverProgrammeDetails(ch, prog) {
+    el('sectionDivider').style.display = 'block';
+    el('hoverProgrammePrefix').style.display = 'inline';
+    el('hoverProgrammePrefix').innerHTML = (ch.number !== undefined && ch.number !== null ? ch.number + ' - ' : '') + (ch.name || 'Channel') + ':';
+    el('hoverProgrammeTitle').innerHTML = prog.title || 'Programme information unavailable';
+    
+    var detailsText = fmt(startMs(prog)) + ' - ' + fmt(stopMs(prog));
+    if (prog.subtitle) detailsText += ' - ' + prog.subtitle;
+    
+    var descText = prog.desc || prog.description || prog.summary || '';
+    if (descText) detailsText += ' | ' + descText;
+
+    el('hoverProgrammeDetails').innerHTML = '';
+    el('hoverProgrammeDetails').appendChild(document.createTextNode(detailsText));
+  }
+
+  function clearHoverDetails() {
+    if (hoverTimer) {
+      clearTimeout(hoverTimer);
+      hoverTimer = null;
+    }
+    el('sectionDivider').style.display = 'none';
+    el('hoverProgrammePrefix').style.display = 'none';
+    el('hoverProgrammePrefix').innerHTML = '';
+    el('hoverProgrammeTitle').innerHTML = '';
+    el('hoverProgrammeDetails').innerHTML = '';
+  }
+
+  function updateDetails(ch) {
+    clearHoverDetails();
+    var pair = pairFor(ch);
+    el('selectedChannel').innerHTML = (ch.number !== undefined && ch.number !== null ? ch.number + ' - ' : '') + (ch.name || 'Channel');
+    el('programmeTitle').innerHTML = pair.current ? (pair.current.title || 'Programme information unavailable') : 'No current programme data';
+    el('channelColon').style.display = 'inline';
+    
+    var detailsText = '';
+    var currentProg = pair.current;
+    if (currentProg) {
+      detailsText = fmt(startMs(currentProg)) + ' - ' + fmt(stopMs(currentProg));
+      if (currentProg.subtitle) detailsText += ' - ' + currentProg.subtitle;
+      
+      var descText = currentProg.desc || currentProg.description || currentProg.summary || '';
+      if (descText) detailsText += ' | ' + descText;
+    } else {
+      detailsText = 'The stream can play even when EPG data is missing.';
+    }
+    el('programmeDetails').innerHTML = '';
+    el('programmeDetails').appendChild(document.createTextNode(detailsText));
+
+    var nextText = '';
+    var nextDetailsText = '';
+    if (pair.next) {
+      nextText = pair.next.title || 'Programme';
+      nextDetailsText = fmt(startMs(pair.next)) + ' - ' + fmt(stopMs(pair.next));
+      if (pair.next.subtitle) nextDetailsText += ' - ' + pair.next.subtitle;
+      var nDesc = pair.next.desc || pair.next.description || pair.next.summary || '';
+      if (nDesc) nextDetailsText += ' | ' + nDesc;
+    } else {
+      nextText = 'No upcoming programme data';
+    }
+    el('nextProgrammePrefix').style.display = 'inline';
+    el('nextProgrammeTitle').innerHTML = nextText;
+    el('nextProgrammeDetails').innerHTML = nextDetailsText;
+  }
+
+  function updateDetailsForProgramme(ch, prog) {
+    clearHoverDetails();
+    var pair = pairFor(ch);
+    el('selectedChannel').innerHTML = (ch.number !== undefined && ch.number !== null ? ch.number + ' - ' : '') + (ch.name || 'Channel');
+    el('channelColon').style.display = 'inline';
+
+    if (prog) {
+      el('programmeTitle').innerHTML = prog.title || 'Programme information unavailable';
+      var detailsText = fmt(startMs(prog)) + ' - ' + fmt(stopMs(prog));
+      if (prog.subtitle) detailsText += ' - ' + prog.subtitle;
+      
+      var descText = prog.desc || prog.description || prog.summary || '';
+      if (descText) detailsText += ' | ' + descText;
+
+      el('programmeDetails').innerHTML = '';
+      el('programmeDetails').appendChild(document.createTextNode(detailsText));
+    } else {
+      updateDetails(ch);
+    }
+
+    var nextText = '';
+    var nextDetailsText = '';
+    if (pair.next) {
+      nextText = pair.next.title || 'Programme';
+      nextDetailsText = fmt(startMs(pair.next)) + ' - ' + fmt(stopMs(pair.next));
+      if (pair.next.subtitle) nextDetailsText += ' - ' + pair.next.subtitle;
+      var nDesc = pair.next.desc || pair.next.description || pair.next.summary || '';
+      if (nDesc) nextDetailsText += ' | ' + nDesc;
+    } else {
+      nextText = 'No upcoming programme data';
+    }
+    el('nextProgrammePrefix').style.display = 'inline';
+    el('nextProgrammeTitle').innerHTML = nextText;
+    el('nextProgrammeDetails').innerHTML = nextDetailsText;
+  }
+
+  function tune(index) {
+    var url, p;
+    if (index < 0 || index >= channels.length) return;
+    selectedIndex = index; selectedChannel = channels[index];
+    
+    renderedRows = {};
+    initGuideSkeleton(); 
+    updateDetails(selectedChannel);
+
+    url = config.template.replace('{uuid}', encodeURIComponent(selectedChannel.uuid)).replace('{number}', encodeURIComponent(selectedChannel.number == null ? '' : selectedChannel.number));
+    el('videoMessage').style.display = 'block';
+    el('videoMessage').innerHTML = 'Connecting to ' + (selectedChannel.name || 'channel') + '...';
+    video.pause();
+    video.removeAttribute('src');
+    video.src = url;
+    video.load();
+    try { p = video.play(); if (p && p.catch) p.catch(function () { playbackError('Press Play channel if autoplay is blocked.'); }); }
+    catch (e) { playbackError('Press Play channel to start playback.'); }
+  }
+
+  function playbackError(message) {
+    el('videoMessage').style.display = 'block';
+    el('videoMessage').innerHTML = message;
+    setStatus('Playback failed; check stream URL and TV codec support', 'err');
+  }
+
+  video.onplaying = function () { 
+    el('videoMessage').style.display = 'none'; 
+    setStatus('Playing ' + (selectedChannel ? selectedChannel.name : ''), 'ok'); 
+  };
+  video.onerror = function () { if (selectedChannel) playbackError('Video unavailable. Check the TVHeadend stream profile and browser codec support.'); };
+
+  function refresh(isBackground) {
+    if (loading) return;
+    loading = true; 
+    if (!isBackground) setStatus('Connecting to TVHeadend...', '');
+    
+    apiText('playlist/channels', function (m3uErr, m3uText) {
+      var logoMap = {};
+      if (!m3uErr && m3uText) {
+        logoMap = parseM3U(m3uText);
+      }
+
+      api('channel/grid?start=0&limit=1000&sort=number', function (err, data) {
+        var i;
+        if (err) { 
+          loading = false; 
+          setStatus(err.message, 'err'); 
+          el('error').innerHTML = err.message; 
+          return; 
+        }
+        var rawChannels = entries(data);
+        channels = [];
+        for (i = 0; i < rawChannels.length; i++) {
+          var ch = rawChannels[i];
+          var finalIconUrl = '';
+
+          if (logoMap['id_' + ch.uuid]) {
+            finalIconUrl = logoMap['id_' + ch.uuid];
+          } else if (ch.name && logoMap['name_' + ch.name.toLowerCase()]) {
+            finalIconUrl = logoMap['name_' + ch.name.toLowerCase()];
+          }
+
+          if (!finalIconUrl && ch.icon) {
+            var rawApiIcon = String(ch.icon).trim();
+            if (rawApiIcon.indexOf('http://') === 0 || rawApiIcon.indexOf('https://') === 0) {
+              finalIconUrl = rawApiIcon;
+            } else if (rawApiIcon.indexOf('/imagecache/') >= 0) {
+              finalIconUrl = '/imagecache/' + rawApiIcon.split('/imagecache/')[1];
+            } else if (rawApiIcon.indexOf('/') === 0) {
+              finalIconUrl = rawApiIcon;
+            }
+          }
+
+          channels.push({
+            uuid: ch.uuid,
+            name: ch.name,
+            number: ch.number,
+            icon: finalIconUrl
+          });
+        }
+
+        channels.sort(function (a, b) {
+          var an = Number(a.number), bn = Number(b.number);
+          if (!isNaN(an) && !isNaN(bn) && an !== bn) return an - bn;
+          return String(a.name).toLowerCase() < String(b.name).toLowerCase() ? -1 : 1;
+        });
+
+        api('epg/events/grid?start=0&limit=3000&sort=start', function (epgErr, epgData) {
+          if (epgErr) { events = []; setStatus('Channels loaded; EPG request failed: ' + epgErr.message, 'err'); }
+          else events = entries(epgData);
+          if (selectedChannel) {
+            selectedIndex = -1;
+            for (i = 0; i < channels.length; i++) if (channels[i].uuid === selectedChannel.uuid) selectedIndex = i;
+          }
+          renderedRows = {};
+          initGuideSkeleton();
+          if (selectedIndex < 0 && channels.length && !guideInitialized) { selectedIndex = 0; selectedChannel = channels[0]; guideFocus = 0; updateDetails(selectedChannel); focusChannel(0); }
+          if (!epgErr) setStatus('Connected - guide updated', 'ok');
+          loading = false;
+        });
+      });
+    });
+  }
+
+  function openSettings() { el('settings').style.display = 'block'; el('username').focus(); }
+  function closeSettings() { el('settings').style.display = 'none'; }
+  el('settingsButton').onclick = openSettings;
+  el('cancelSettings').onclick = closeSettings;
+  el('saveSettings').onclick = function () {
+    config.username = el('username').value || defaults.username;
+    config.password = el('password').value || defaults.password;
+    config.template = el('streamTemplate').value || defaults.template;
+    if (config.template.indexOf('{uuid}') < 0) { el('error').innerHTML = 'Stream URL must contain {uuid}.'; return; }
+    try { window.localStorage.setItem('tvhGuideConfig', JSON.stringify(config)); } catch (e) {}
+    el('error').innerHTML = ''; closeSettings(); refresh(false);
+  };
+
+  document.onkeydown = function (e) {
+    e = e || window.event;
+    var key = e.key || e.keyCode;
+    var isUp = (key === 'ArrowUp' || key === 38);
+    var isDown = (key === 'ArrowDown' || key === 40);
+    var isLeft = (key === 'ArrowLeft' || key === 37);
+    var isRight = (key === 'ArrowRight' || key === 39);
+    var isEnter = (key === 'Enter' || key === 13);
+
+    if (el('settings').style.display === 'block') {
+      if (key === 'Escape' || key === 'Backspace' || key === 27 || key === 8) closeSettings();
+      return;
+    }
+
+    if (isUp || isDown) {
+      focusChannel(guideFocus + (isDown ? 1 : -1));
+      if (e.preventDefault) e.preventDefault();
+      e.returnValue = false;
+      return false;
+    }
+
+    if (isLeft || isRight) {
+      if (gridContainer) {
+        gridContainer.scrollLeft += (isRight ? 200 : -200);
+        if (headerDiv) headerDiv.style.transform = 'translateX(-' + gridContainer.scrollLeft + 'px)';
+      }
+      if (e.preventDefault) e.preventDefault();
+      e.returnValue = false;
+      return false;
+    }
+
+    if (isEnter) {
+      if (guideFocus >= 0 && guideFocus < channels.length) {
+        tune(guideFocus);
+      }
+      if (e.preventDefault) e.preventDefault();
+      e.returnValue = false;
+      return false;
+    }
+  };
+
+  function tick() {
+    var d = new Date(), h = d.getHours(), m = d.getMinutes();
+    el('clock').innerHTML = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  }
+  loadConfig(); tick(); 
+  window.setInterval(tick, 15000); 
+  window.setInterval(function() { refresh(true); }, 600000);
+  refresh(false);
+}());
+</script>
+</body>
+</html>
